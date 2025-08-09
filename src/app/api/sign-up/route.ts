@@ -3,6 +3,7 @@ import UserModel from "@/app/model/User";
 import bcrypt from "bcryptjs";
 import { sendVerificationEmail } from "@/app/helpers/sendVerificationEmail";
 import { NextResponse } from "next/server";
+import { success } from "zod";
 
 export async function POST(request: Request) {
   await dbConnect();
@@ -45,6 +46,22 @@ export async function POST(request: Request) {
         existingUserByEmail.verifyCode = verifyCode;
         existingUserByEmail.verifyCodeExpire = new Date(Date.now() + 3600000); // 1 hour
         await existingUserByEmail.save();
+
+        const emailResponse = await sendVerificationEmail(email , username , verifyCode);
+        if (!emailResponse.success){
+          return NextResponse.json({
+            success: false,
+            message: emailResponse.message,
+          }, {status: 500});
+        }
+
+        return NextResponse.json(
+          {
+          success: true,
+          message: "Verification email resent.",
+          },
+          { status: 200 }
+         );
       }
     } else {
       const hashedPassword = await bcrypt.hash(password, 10);
